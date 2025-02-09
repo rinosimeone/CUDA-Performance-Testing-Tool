@@ -64,14 +64,14 @@ Vedere [CHANGELOG.md](CHANGELOG.md) per la storia completa delle modifiche.
 
 ## TODO
 
-- [x] Implementazione benchmark base
-- [x] Aggiunta visualizzazione ASCII
-- [x] Integrazione database GPU
-- [x] Analisi performance dettagliata
-- [x] Raccomandazioni workload
-- [ ] Supporto per test multi-GPU
-- [ ] Esportazione risultati in formato JSON
-- [ ] Interfaccia web per visualizzazione risultati
+- [ ] Aggiungere supporto per test multi-GPU paralleli
+- [ ] Implementare esportazione risultati in vari formati (JSON, CSV, PDF)
+- [ ] Creare dashboard web per visualizzazione risultati storici
+- [ ] Aggiungere supporto per benchmark personalizzati
+- [ ] Implementare confronto automatico con benchmark precedenti
+- [ ] Aggiungere profiling memoria dettagliato
+- [ ] Sviluppare modalità batch per test automatizzati
+- [ ] Integrare supporto per container Docker
 
 ## Contribuire
 
