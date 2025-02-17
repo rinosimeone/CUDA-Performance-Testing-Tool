@@ -5,6 +5,26 @@ Tutte le modifiche notevoli al progetto saranno documentate in questo file.
 Il formato è basato su [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 e questo progetto aderisce al [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-02-17
+
+### Aggiunto
+- Confronto prestazioni con altre GPU NVIDIA
+- Database di riferimento con GPU di diverse generazioni
+- Visualizzazione ASCII del confronto GPU
+- Indicatore della GPU corrente nel confronto
+
+### Modificato
+- Migliorata la visualizzazione ASCII
+- Aggiornato README con esempi di confronto GPU
+- Ottimizzata la struttura del codice
+- Aggiornata la lista TODO
+
+### Caratteristiche Tecniche
+- Confronto con RTX 4090, 3090, 2080 Ti, 2070
+- Visualizzazione comparativa con barre ASCII
+- Ordinamento GPU per performance
+- Indicatore per GPU corrente
+
 ## [1.1.0] - 2025-02-17
 
 ### Aggiunto

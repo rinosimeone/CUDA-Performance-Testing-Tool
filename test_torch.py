@@ -3,9 +3,44 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 
+# Reference performance data for different NVIDIA GPUs (time in seconds for 4000x4000 matrix multiplication)
+GPU_REFERENCE = {
+    'RTX 4090': 0.7234,    # Latest gen, high-end
+    'RTX 3090': 0.9845,    # Previous gen, high-end
+    'Quadro RTX 3000': None,  # Current GPU (will be filled during benchmark)
+    'RTX 2080 Ti': 1.3456, # Two gens ago, high-end
+    'RTX 2070': 1.8901,    # Two gens ago, mid-range
+}
+
 def create_ascii_bar(value, max_value, width=50):
     bar_length = int(width * (value / max_value))
     return '█' * bar_length + ' ' * (width - bar_length)
+
+def show_gpu_comparison(current_time, size):
+    if size != 4000:  # Only show comparison for largest matrix size
+        return
+        
+    print("\nGPU Performance Comparison (4000x4000 matrix)")
+    print("=" * 80)
+    
+    # Update reference with current GPU's performance
+    GPU_REFERENCE['Quadro RTX 3000'] = current_time
+    
+    # Find max time for scaling
+    max_time = max(time for time in GPU_REFERENCE.values() if time is not None)
+    
+    # Sort GPUs by performance (ascending times = better performance)
+    sorted_gpus = sorted(
+        [(gpu, time) for gpu, time in GPU_REFERENCE.items() if time is not None],
+        key=lambda x: x[1]
+    )
+    
+    # Show bars
+    for gpu, time in sorted_gpus:
+        marker = "→ " if gpu == 'Quadro RTX 3000' else "  "
+        print(f"{marker}{gpu:<15} │ {create_ascii_bar(time, max_time)} {time:.4f}s")
+    
+    print("=" * 80)
 
 def run_benchmark(size=1000, iterations=100, results=None):
     print(f"PyTorch version: {torch.__version__}")
@@ -50,14 +85,16 @@ def run_benchmark(size=1000, iterations=100, results=None):
         speedup = cpu_time / gpu_time
         print(f"\nGPU Speedup: {speedup:.2f}x faster than CPU")
         
-        # ASCII visualization
-        print("\nPerformance Visualization")
+        # CPU vs GPU ASCII visualization
+        print("\nCPU vs GPU Performance")
         print("=" * 80)
         max_time = max(cpu_time, gpu_time)
-        
         print(f"CPU │ {create_ascii_bar(cpu_time, max_time)} {cpu_time:.4f}s")
         print(f"GPU │ {create_ascii_bar(gpu_time, max_time)} {gpu_time:.4f}s")
         print("=" * 80)
+        
+        # Show GPU comparison for largest matrix size
+        show_gpu_comparison(gpu_time, size)
         
         if results is not None:
             results['sizes'].append(size)
