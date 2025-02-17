@@ -291,7 +291,7 @@ def create_bar_chart(values: List[float], labels: List[str], title: str, max_wid
     # Create bars
     for value, label in zip(values, labels):
         # Calculate bar width
-        width = int((value / max_val) * max_width)
+        width = int((value / max_val) * max_width) if max_val != 0 else 0
         bar = "█" * width
         
         # Add value at the end of the bar
@@ -343,8 +343,8 @@ def format_comparison_table(current_results: Dict[str, float], gpu_name: str) ->
     
     # Collect data for charts
     matrix_labels = []
-    for gpu_name, gpu in [("Current", None)] + list(GPU_DATABASE.items()):
-        matrix_labels.append(gpu_name if gpu else "Current")
+    for gpu_label, gpu in [("Current", None)] + list(GPU_DATABASE.items()):
+        matrix_labels.append(gpu_label if gpu else "Current")
         if gpu:
             matrix_chart_data['1024x1024'].append(gpu.matrix_mult_1024)
             matrix_chart_data['2048x2048'].append(gpu.matrix_mult_2048)
@@ -354,7 +354,6 @@ def format_comparison_table(current_results: Dict[str, float], gpu_name: str) ->
             matrix_chart_data['2048x2048'].append(current_results['matrix_2048'])
             matrix_chart_data['4096x4096'].append(current_results['matrix_4096'])
     
-    # Add performance charts
     table += "\nVisualizzazione Performance (tempo minore = migliore):\n"
     for size in ['1024x1024', '2048x2048', '4096x4096']:
         table += create_bar_chart(
@@ -381,12 +380,11 @@ def format_comparison_table(current_results: Dict[str, float], gpu_name: str) ->
     scaling_labels = ["1024x1024 (base)"]
     base_perf = current_results['matrix_1024']
     
-    # Calculate and add actual vs theoretical scaling
     for size in [2048, 4096]:
-        actual_scaling = current_results[f'matrix_{size}'] / base_perf
+        actual_scaling = current_results[f'matrix_{size}'] / base_perf if base_perf != 0 else 0
         # Theoretical scaling is (size/1024)^3 for matrix multiplication
-        theoretical_scaling = (size/1024)**3
-        efficiency = (theoretical_scaling / actual_scaling) * 100
+        theoretical_scaling = (size / 1024)**3
+        efficiency = (theoretical_scaling / actual_scaling) * 100 if actual_scaling != 0 else 0
         
         scaling_values.append(actual_scaling)
         scaling_labels.append(f"{size}x{size} ({efficiency:.0f}% efficienza)")
@@ -394,35 +392,35 @@ def format_comparison_table(current_results: Dict[str, float], gpu_name: str) ->
     table += create_bar_chart(
         scaling_values,
         scaling_labels,
-        "Scaling Performance (rispetto a 1024x1024 come base)\n" +
+        "Scaling Performance (rispetto a 1024x1024 come base)\n"
         "L'efficienza indica quanto ci si avvicina allo scaling teorico ottimale"
     )
     
     return table
 
-def analyze_performance(current_results: Dict[str, float], gpu_name: str) -> str:
+def _get_relative_performance(current: float, reference: float) -> float:
     """
-    Analyze performance compared to known GPUs.
-    
-    Args:
-        current_results: Dictionary with current benchmark results
-        gpu_name: Name of the current GPU
-        
-    Returns:
-        str: Performance analysis text
+    Helper function to get the relative performance difference.
+    Positive result means 'current' is faster (less time) than 'reference'.
     """
-    analysis = "\nAnalisi Performance:\n"
-    
-    # Calculate relative performance metrics
-    def get_relative_performance(current: float, reference: float) -> float:
-        return (reference - current) / reference * 100  # positive means faster than reference
-    
-    # Find similar GPUs based on overall performance profile
+    if reference == 0:
+        return 0.0
+    return (reference - current) / reference * 100
+
+def _find_similar_gpus(current_results: Dict[str, float], gpu_name: str) -> str:
+    """
+    Identify similar GPUs based on matrix multiplication times and memory bandwidth.
+    Returns a formatted string describing the similar GPUs.
+    """
+    similar_report = ""
     similar_gpus = []
     for gpu in GPU_DATABASE.values():
         # Calculate similarity score based on multiple metrics
         matrix_diff = abs(gpu.matrix_mult_2048 - current_results['matrix_2048'])
-        memory_diff = abs(gpu.memory_bandwidth - current_results['memory_bandwidth']) / gpu.memory_bandwidth
+        if gpu.memory_bandwidth == 0:
+            memory_diff = 1.0
+        else:
+            memory_diff = abs(gpu.memory_bandwidth - current_results['memory_bandwidth']) / gpu.memory_bandwidth
         small_matrix_diff = abs(gpu.matrix_mult_1024 - current_results['matrix_1024'])
         large_matrix_diff = abs(gpu.matrix_mult_4096 - current_results['matrix_4096'])
         
@@ -438,39 +436,48 @@ def analyze_performance(current_results: Dict[str, float], gpu_name: str) -> str
             similar_gpus.append((gpu, similarity_score))
     
     similar_gpus.sort(key=lambda x: x[1])
-    
     if similar_gpus:
-        analysis += f"\n1. La tua GPU ({gpu_name}) ha performance simili a:\n"
+        similar_report += f"\n1. La tua GPU ({gpu_name}) ha performance simili a:\n"
         for gpu, score in similar_gpus[:3]:
             # Calculate relative performance for detailed comparison
-            matrix_perf = get_relative_performance(current_results['matrix_2048'], gpu.matrix_mult_2048)
-            memory_perf = get_relative_performance(gpu.memory_bandwidth, current_results['memory_bandwidth'])
+            matrix_perf = _get_relative_performance(current_results['matrix_2048'], gpu.matrix_mult_2048)
+            memory_perf = _get_relative_performance(gpu.memory_bandwidth, current_results['memory_bandwidth'])
             
-            comparison = "simile a" if abs(matrix_perf) < 10 else "più veloce di" if matrix_perf > 0 else "più lenta di"
-            analysis += f"   - {gpu.name} ({gpu.type}, {gpu.architecture})\n"
-            analysis += f"     • Performance calcolo: {comparison} ({abs(matrix_perf):.1f}%)\n"
+            comparison = "simile a"
+            if matrix_perf > 0 and abs(matrix_perf) >= 10:
+                comparison = "più veloce di"
+            elif matrix_perf < 0 and abs(matrix_perf) >= 10:
+                comparison = "più lenta di"
+            similar_report += f"   - {gpu.name} ({gpu.type}, {gpu.architecture})\n"
+            similar_report += f"     • Performance calcolo: {comparison} ({abs(matrix_perf):.1f}%)\n"
             if abs(memory_perf) > 10:
-                analysis += f"     • Banda memoria: {abs(memory_perf):.1f}% inferiore\n"
-    
-    # Performance category based on multiple metrics
+                similar_report += f"     • Banda memoria: {abs(memory_perf):.1f}% inferiore\n"
+    return similar_report
+
+def _categorize_performance(current_results: Dict[str, float], gpu_name: str) -> str:
+    """
+    Determine a performance category for the current GPU based on reference GPU data.
+    Returns a formatted string with the category analysis.
+    """
+    analysis = ""
     matrix_2048_time = current_results['matrix_2048']
     matrix_4096_time = current_results['matrix_4096']
     memory_bandwidth = current_results['memory_bandwidth']
-    
+    compute_capability = current_results['compute_capability']
+
     # Separate consumer and professional GPUs for fairer comparison
     prof_gpus = [gpu for gpu in GPU_DATABASE.values() if gpu.type == "professional"]
-    same_gen_gpus = [gpu for gpu in prof_gpus if gpu.compute_capability == current_results['compute_capability']]
-    
+    same_gen_gpus = [gpu for gpu in prof_gpus if gpu.compute_capability == compute_capability]
+
     # Calculate scores relative to same-generation professional GPUs
     if same_gen_gpus:
         avg_prof_2048 = sum(gpu.matrix_mult_2048 for gpu in same_gen_gpus) / len(same_gen_gpus)
-        avg_prof_bandwidth = sum(gpu.memory_bandwidth for gpu in same_gen_gpus) / len(same_gen_gpus)
-        
-        relative_compute = avg_prof_2048 / matrix_2048_time
-        relative_bandwidth = memory_bandwidth / avg_prof_bandwidth
-        
+        avg_prof_bandwidth = sum(gpu.memory_bandwidth for gpu in same_gen_gpus) / len(same_gen_gpus) if len(same_gen_gpus) > 0 else 1
+        relative_compute = avg_prof_2048 / matrix_2048_time if matrix_2048_time != 0 else 0
+        relative_bandwidth = memory_bandwidth / avg_prof_bandwidth if avg_prof_bandwidth != 0 else 0
+
         score = (relative_compute * 60 + relative_bandwidth * 40)  # Weighted score
-        
+
         if score > 1.2:
             category = "fascia alta (professionale)"
         elif score > 0.8:
@@ -489,23 +496,40 @@ def analyze_performance(current_results: Dict[str, float], gpu_name: str) -> str
             category = "fascia media"
         else:
             category = "fascia base"
-    
+
     analysis += f"\n2. Categoria di performance: {category}\n"
-    
-    # Detailed strengths/weaknesses analysis
-    analysis += "\n3. Analisi dettagliata:\n"
-    
+    return analysis
+
+def _analyze_detailed_performance(current_results: Dict[str, float]) -> str:
+    """
+    Build a detailed strengths/weaknesses analysis based on matrix performance and memory bandwidth.
+    Returns the formatted analysis string.
+    """
+    analysis = "\n3. Analisi dettagliata:\n"
+    matrix_2048_time = current_results['matrix_2048']
+    matrix_4096_time = current_results['matrix_4096']
+    memory_bandwidth = current_results['memory_bandwidth']
+    compute_capability = current_results['compute_capability']
+
+    # Determine professional GPU subset for same-compute
+    prof_gpus = [gpu for gpu in GPU_DATABASE.values() if gpu.type == "professional"]
+    same_gen_gpus = [gpu for gpu in prof_gpus if gpu.compute_capability == compute_capability]
+
     # Memory bandwidth analysis relative to same class
     if same_gen_gpus:
-        prof_bandwidth_percentile = sum(1 for gpu in same_gen_gpus if gpu.memory_bandwidth < current_results['memory_bandwidth']) / len(same_gen_gpus) * 100
-        analysis += f"   ℹ Banda di memoria: {current_results['memory_bandwidth']:.0f} GB/s "
-        if prof_bandwidth_percentile > 50:
-            analysis += f"(superiore al {prof_bandwidth_percentile:.0f}% delle GPU professionali Turing)\n"
+        filtered_gpus = [gpu for gpu in same_gen_gpus if gpu.memory_bandwidth > 0]
+        if not filtered_gpus:
+            analysis += f"   ℹ Banda di memoria: {memory_bandwidth:.0f} GB/s\n"
         else:
-            analysis += f"(nella media delle GPU professionali Turing)\n"
+            prof_bandwidth_percentile = sum(1 for gpu in filtered_gpus if gpu.memory_bandwidth < memory_bandwidth) / len(filtered_gpus) * 100
+            analysis += f"   ℹ Banda di memoria: {memory_bandwidth:.0f} GB/s "
+            if prof_bandwidth_percentile > 50:
+                analysis += f"(superiore al {prof_bandwidth_percentile:.0f}% delle GPU professionali {filtered_gpus[0].architecture})\n"
+            else:
+                analysis += f"(nella media delle GPU professionali {filtered_gpus[0].architecture})\n"
     else:
-        analysis += f"   ℹ Banda di memoria: {current_results['memory_bandwidth']:.0f} GB/s\n"
-    
+        analysis += f"   ℹ Banda di memoria: {memory_bandwidth:.0f} GB/s\n"
+
     # Matrix multiplication analysis by size, comparing to same-generation professional GPUs
     analysis += "\n   Performance per dimensione matrice:\n"
     sizes = [(1024, 'piccole'), (2048, 'medie'), (4096, 'grandi')]
@@ -513,12 +537,12 @@ def analyze_performance(current_results: Dict[str, float], gpu_name: str) -> str
         current_time = current_results[f'matrix_{size}']
         if same_gen_gpus:
             times = [getattr(gpu, f'matrix_mult_{size}') for gpu in same_gen_gpus]
-            avg_time = sum(times) / len(times)
-            perf_ratio = (avg_time / current_time - 1) * 100  # Percentage difference from average
-            
+            avg_time = sum(times) / len(times) if len(times) > 0 else 1
+            perf_ratio = (avg_time / current_time - 1) * 100 if current_time != 0 else 0
+
             if abs(perf_ratio) < 10:
                 analysis += f"   ✓ Matrici {desc} ({size}x{size}): {current_time:.1f}ms "
-                analysis += f"(nella media delle GPU professionali Turing)\n"
+                analysis += f"(nella media delle GPU professionali {filtered_gpus[0].architecture if same_gen_gpus else ''})\n"
             elif perf_ratio > 0:
                 analysis += f"   ✓ Matrici {desc} ({size}x{size}): {current_time:.1f}ms "
                 analysis += f"({perf_ratio:.0f}% più veloce della media)\n"
@@ -527,40 +551,70 @@ def analyze_performance(current_results: Dict[str, float], gpu_name: str) -> str
                 analysis += f"({-perf_ratio:.0f}% più lenta della media)\n"
         else:
             analysis += f"   ℹ Matrici {desc} ({size}x{size}): {current_time:.1f}ms\n"
-    
-    # Add workload recommendations based on performance profile
-    analysis += "\n4. Raccomandazioni per il carico di lavoro:\n"
-    
-    # Check performance patterns
+
+    return analysis
+
+def _build_workload_recommendations(current_results: Dict[str, float]) -> str:
+    """
+    Build a final set of recommendations based on the performance profile.
+    """
+    recs = "\n4. Raccomandazioni per il carico di lavoro:\n"
     small_matrix_perf = current_results['matrix_1024']
     large_matrix_perf = current_results['matrix_4096']
-    
+    memory_bandwidth = current_results['memory_bandwidth']
+
     if small_matrix_perf < 1.0:  # Excellent small matrix performance
-        analysis += "   ✓ Ottimo per:\n"
-        analysis += "     • Operazioni batch con matrici piccole (<2048x2048)\n"
-        analysis += "     • Inferenza di reti neurali con batch size ridotti\n"
-        analysis += "     • Elaborazione real-time di dati\n"
-    
+        recs += "   ✓ Ottimo per:\n"
+        recs += "     • Operazioni batch con matrici piccole (<2048x2048)\n"
+        recs += "     • Inferenza di reti neurali con batch size ridotti\n"
+        recs += "     • Elaborazione real-time di dati\n"
+
     if large_matrix_perf > 30.0:  # Slower on large matrices
-        analysis += "   ⚠ Considerazioni per carichi pesanti:\n"
-        analysis += "     • Suddividere operazioni su matrici grandi in blocchi più piccoli\n"
-        analysis += "     • Ottimizzare l'uso della memoria per dataset estesi\n"
-        analysis += "     • Considerare tecniche di parallelizzazione per task complessi\n"
+        recs += "   ⚠ Considerazioni per carichi pesanti:\n"
+        recs += "     • Suddividere operazioni su matrici grandi in blocchi più piccoli\n"
+        recs += "     • Ottimizzare l'uso della memoria per dataset estesi\n"
+        recs += "     • Considerare tecniche di parallelizzazione per task complessi\n"
+
+    if memory_bandwidth < 300:
+        recs += "\n   Suggerimenti per l'ottimizzazione della memoria:\n"
+        recs += "     • Minimizzare i trasferimenti di dati tra CPU e GPU\n"
+        recs += "     • Riutilizzare i dati in memoria GPU quando possibile\n"
+        recs += "     • Considerare la compressione dei dati per dataset grandi\n"
+
+    recs += "\n   Suggerimenti per CUDA 12.x:\n"
+    recs += "     • Utilizzare Tensor Cores per operazioni in FP16/BF16 quando possibile\n"
+    recs += "     • Abilitare TF32 per migliori performance in FP32\n"
+    recs += "     • Sfruttare le ottimizzazioni della libreria cuBLAS\n"
+    recs += "     • Considerare l'uso di CUDA Graphs per workload ripetitivi\n"
+
+    return recs
+
+def analyze_performance(current_results: Dict[str, float], gpu_name: str) -> str:
+    """
+    Analyze performance compared to known GPUs.
     
-    # Memory recommendations based on bandwidth
-    if current_results['memory_bandwidth'] < 300:
-        analysis += "\n   Suggerimenti per l'ottimizzazione della memoria:\n"
-        analysis += "     • Minimizzare i trasferimenti di dati tra CPU e GPU\n"
-        analysis += "     • Riutilizzare i dati in memoria GPU quando possibile\n"
-        analysis += "     • Considerare la compressione dei dati per dataset grandi\n"
+    Args:
+        current_results: Dictionary with current benchmark results
+        gpu_name: Name of the current GPU
         
-    # CUDA version-specific recommendations
-    analysis += "\n   Suggerimenti per CUDA 12.x:\n"
-    analysis += "     • Utilizzare Tensor Cores per operazioni in FP16/BF16 quando possibile\n"
-    analysis += "     • Abilitare TF32 per migliori performance in FP32\n"
-    analysis += "     • Sfruttare le ottimizzazioni della libreria cuBLAS\n"
-    analysis += "     • Considerare l'uso di CUDA Graphs per workload ripetitivi\n"
-    
+    Returns:
+        str: Performance analysis text
+    """
+    # Start analysis string
+    analysis = "\nAnalisi Performance:\n"
+
+    # 1. Find GPUs with similar performance
+    analysis += _find_similar_gpus(current_results, gpu_name)
+
+    # 2. Categorize performance
+    analysis += _categorize_performance(current_results, gpu_name)
+
+    # 3. Detailed analysis by memory bandwidth and matrix size
+    analysis += _analyze_detailed_performance(current_results)
+
+    # 4. Build final workload recommendations
+    analysis += _build_workload_recommendations(current_results)
+
     return analysis
 
 def main() -> None:
@@ -581,7 +635,7 @@ def main() -> None:
         
         if cuda_available:
             logger.info("\nEsecuzione benchmark completo...")
-            
+
             # Run benchmarks
             current_results = {
                 'matrix_1024': run_cuda_benchmark(1024) or 0.0,
@@ -590,10 +644,10 @@ def main() -> None:
                 'memory_bandwidth': measure_memory_bandwidth(),
                 'compute_capability': compute_capability
             }
-            
+
             # Show comparison table
             print(format_comparison_table(current_results, device_name))
-            
+
             # Show performance analysis
             print(analyze_performance(current_results, device_name))
             
