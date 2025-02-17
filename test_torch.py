@@ -3,6 +3,10 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 
+def create_ascii_bar(value, max_value, width=50):
+    bar_length = int(width * (value / max_value))
+    return '█' * bar_length + ' ' * (width - bar_length)
+
 def run_benchmark(size=1000, iterations=100, results=None):
     print(f"PyTorch version: {torch.__version__}")
     print(f"CUDA available: {torch.cuda.is_available()}")
@@ -45,6 +49,15 @@ def run_benchmark(size=1000, iterations=100, results=None):
         # Calculate speedup
         speedup = cpu_time / gpu_time
         print(f"\nGPU Speedup: {speedup:.2f}x faster than CPU")
+        
+        # ASCII visualization
+        print("\nPerformance Visualization")
+        print("=" * 80)
+        max_time = max(cpu_time, gpu_time)
+        
+        print(f"CPU │ {create_ascii_bar(cpu_time, max_time)} {cpu_time:.4f}s")
+        print(f"GPU │ {create_ascii_bar(gpu_time, max_time)} {gpu_time:.4f}s")
+        print("=" * 80)
         
         if results is not None:
             results['sizes'].append(size)
