@@ -17,7 +17,8 @@ def fetch_gpu_reference_data():
                 # Check if cache is less than 24 hours old
                 if datetime.now().timestamp() - cache['timestamp'] < 86400:  # 24 hours
                     print("Using cached GPU performance data")
-                    return cache['data']
+                    return {k: float(v) if isinstance(v, (int, float, str)) and v is not None else v 
+                           for k, v in cache['data']['gpus'].items()}
         except (FileNotFoundError, json.JSONDecodeError):
             pass
 
@@ -27,11 +28,14 @@ def fetch_gpu_reference_data():
         response.raise_for_status()
         
         data = response.json()
+        # Extract only GPU performance data and convert to float
+        gpu_data = {k: float(v) if isinstance(v, (int, float, str)) and v is not None else v 
+                    for k, v in data['gpus'].items()}
         
         # Cache the results
         cache_data = {
             'timestamp': datetime.now().timestamp(),
-            'data': data
+            'data': data  # Store complete data including metadata
         }
         with open('gpu_performance_cache.json', 'w') as f:
             json.dump(cache_data, f)
