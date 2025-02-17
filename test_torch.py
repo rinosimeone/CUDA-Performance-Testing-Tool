@@ -3,14 +3,56 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 
-# Reference performance data for different NVIDIA GPUs (time in seconds for 4000x4000 matrix multiplication)
-GPU_REFERENCE = {
-    'RTX 4090': 0.7234,    # Latest gen, high-end
-    'RTX 3090': 0.9845,    # Previous gen, high-end
-    'Quadro RTX 3000': None,  # Current GPU (will be filled during benchmark)
-    'RTX 2080 Ti': 1.3456, # Two gens ago, high-end
-    'RTX 2070': 1.8901,    # Two gens ago, mid-range
-}
+import requests
+import json
+from datetime import datetime
+
+def fetch_gpu_reference_data():
+    """Fetch GPU performance data from online database"""
+    try:
+        # Try to fetch from local cache first
+        try:
+            with open('gpu_performance_cache.json', 'r') as f:
+                cache = json.load(f)
+                # Check if cache is less than 24 hours old
+                if datetime.now().timestamp() - cache['timestamp'] < 86400:  # 24 hours
+                    print("Using cached GPU performance data")
+                    return cache['data']
+        except (FileNotFoundError, json.JSONDecodeError):
+            pass
+
+        # If cache miss or expired, fetch from API
+        url = "https://raw.githubusercontent.com/rinosimeone/CUDA-Performance-Testing-Tool/main/gpu_performance.json"
+        response = requests.get(url, timeout=5)
+        response.raise_for_status()
+        
+        data = response.json()
+        
+        # Cache the results
+        cache_data = {
+            'timestamp': datetime.now().timestamp(),
+            'data': data
+        }
+        with open('gpu_performance_cache.json', 'w') as f:
+            json.dump(cache_data, f)
+        
+        print("Successfully fetched latest GPU performance data")
+        return data
+        
+    except Exception as e:
+        print(f"Warning: Could not fetch online GPU data ({str(e)})")
+        print("Using fallback reference data")
+        # Fallback to hardcoded data if fetch fails
+        return {
+            'RTX 4090': 0.7234,    # Latest gen, high-end
+            'RTX 3090': 0.9845,    # Previous gen, high-end
+            'Quadro RTX 3000': None,  # Current GPU (will be filled during benchmark)
+            'RTX 2080 Ti': 1.3456, # Two gens ago, high-end
+            'RTX 2070': 1.8901,    # Two gens ago, mid-range
+        }
+
+# Initialize GPU reference data
+GPU_REFERENCE = fetch_gpu_reference_data()
 
 def create_ascii_bar(value, max_value, width=50):
     bar_length = int(width * (value / max_value))
