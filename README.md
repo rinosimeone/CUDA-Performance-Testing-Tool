@@ -5,7 +5,9 @@ Un tool completo per il benchmark e l'analisi delle performance CUDA, con visual
 ## Caratteristiche
 
 - ✨ Benchmark completo delle performance CUDA
-- 📊 Visualizzazione grafica dei risultati con matplotlib
+- 📊 Visualizzazione dei risultati in due modalità:
+  - Grafica con matplotlib (salvata in PNG)
+  - ASCII-based direttamente nel terminale
 - 🔍 Analisi dettagliata comparativa CPU vs GPU
 - 📈 Analisi dello scaling delle performance
 - 💾 Misurazioni della banda di memoria
@@ -35,7 +37,18 @@ python test_torch.py
 
 ## Esempio di Output
 
-Il benchmark genera grafici dettagliati salvati in 'cuda_benchmark_results.png':
+Il benchmark fornisce due tipi di visualizzazione:
+
+1. ASCII nel terminale:
+```
+Performance Visualization
+================================================================================
+CPU │ ██████████████████████████████████████████████████ 8.8123s
+GPU │ ██████                                             1.1669s
+================================================================================
+```
+
+2. Grafici dettagliati (salvati in 'cuda_benchmark_results.png'):
 - Confronto diretto CPU vs GPU per diverse dimensioni di matrici
 - Grafico del fattore di speedup GPU
 - Visualizzazione a barre delle performance comparative
