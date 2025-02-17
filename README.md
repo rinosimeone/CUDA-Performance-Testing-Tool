@@ -1,12 +1,12 @@
 # CUDA Performance Testing Tool
 
-Un tool completo per il benchmark e l'analisi delle performance CUDA, con visualizzazione ASCII dei risultati.
+Un tool completo per il benchmark e l'analisi delle performance CUDA, con visualizzazione grafica dei risultati.
 
 ## Caratteristiche
 
 - ✨ Benchmark completo delle performance CUDA
-- 📊 Visualizzazione ASCII dei risultati senza dipendenze esterne
-- 🔍 Analisi dettagliata comparativa con altre GPU
+- 📊 Visualizzazione grafica dei risultati con matplotlib
+- 🔍 Analisi dettagliata comparativa CPU vs GPU
 - 📈 Analisi dello scaling delle performance
 - 💾 Misurazioni della banda di memoria
 - 🎯 Raccomandazioni specifiche per il carico di lavoro
@@ -16,6 +16,8 @@ Un tool completo per il benchmark e l'analisi delle performance CUDA, con visual
 - Python 3.8+
 - PyTorch con supporto CUDA
 - NVIDIA GPU con driver aggiornati
+- matplotlib per visualizzazione risultati
+- numpy per elaborazione dati
 
 ## Installazione
 
@@ -28,35 +30,44 @@ pip install -r requirements.txt
 ## Utilizzo
 
 ```bash
-python check_cuda.py
+python test_torch.py
 ```
 
 ## Esempio di Output
 
+Il benchmark genera grafici dettagliati salvati in 'cuda_benchmark_results.png':
+- Confronto diretto CPU vs GPU per diverse dimensioni di matrici
+- Grafico del fattore di speedup GPU
+- Visualizzazione a barre delle performance comparative
+
+Output testuale include:
 ```
-Performance Moltiplicazione Matrice 1024x1024 (ms)
-============================================================================
-Current     │ █████████████████                                  0.8
-RTX 4090    │ ███████████████████████████                        1.2
-RTX 3090    │ ██████████████████████████████████                 1.5
+=== Running CUDA Benchmarks ===
+Matrix Multiplication (1000x1000, 100 iterations)
+CPU Time: X.XXX seconds
+GPU Time: X.XXX seconds
+Speedup: XX.XX times faster
+
+[Altri risultati per dimensioni maggiori...]
 ```
 
 ## Risultati Test Recenti
 
-Test eseguito su Quadro RTX 3000:
+Test eseguito su diverse dimensioni di matrici:
 
-- ✅ Eccellenti performance su matrici piccole (1024x1024): 0.8ms
-- ✅ Performance competitive su matrici medie (2048x2048): 5.6ms
-- ℹ️ Performance nella media per matrici grandi (4096x4096): 36ms
-- ℹ️ Banda memoria: 256 GB/s (nella media delle GPU professionali Turing)
+- ✅ Test con matrici 1000x1000 (100 iterazioni)
+- ✅ Test con matrici 2000x2000 (50 iterazioni)
+- ✅ Test con matrici 4000x4000 (25 iterazioni)
+- 📊 Risultati visualizzati in grafici comparativi
 
 ## Funzionalità
 
-- Benchmark matriciale con diverse dimensioni (1024x2048, 2048x2048, 4096x4096)
-- Misurazione banda di memoria
-- Comparazione con database GPU note
-- Visualizzazione ASCII delle performance
-- Analisi dettagliata e raccomandazioni
+- Benchmark matriciale con diverse dimensioni
+- Confronto diretto CPU vs GPU
+- Calcolo dello speedup
+- Visualizzazione grafica dei risultati
+- Analisi dettagliata delle performance
+- Supporto per diverse dimensioni di test
 
 ## Changelog
 
@@ -64,11 +75,11 @@ Vedere [CHANGELOG.md](CHANGELOG.md) per la storia completa delle modifiche.
 
 ## TODO
 
+- [x] Implementare visualizzazione grafica dei risultati
+- [x] Aggiungere benchmark CPU vs GPU
+- [x] Implementare calcolo speedup
 - [ ] Aggiungere supporto per test multi-GPU paralleli
-- [ ] Implementare esportazione risultati in vari formati (JSON, CSV, PDF)
-- [ ] Creare dashboard web per visualizzazione risultati storici
-- [ ] Aggiungere supporto per benchmark personalizzati
-- [ ] Implementare confronto automatico con benchmark precedenti
+- [ ] Implementare esportazione risultati in vari formati (JSON, CSV)
 - [ ] Aggiungere profiling memoria dettagliato
 - [ ] Sviluppare modalità batch per test automatizzati
 - [ ] Integrare supporto per container Docker
