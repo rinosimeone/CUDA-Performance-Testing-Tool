@@ -28,7 +28,6 @@ def fetch_gpu_reference_data():
         response.raise_for_status()
         
         data = response.json()
-        # Extract only GPU performance data and convert to float
         gpu_data = {k: float(v) if isinstance(v, (int, float, str)) and v is not None else v 
                     for k, v in data['gpus'].items()}
         
@@ -41,7 +40,7 @@ def fetch_gpu_reference_data():
             json.dump(cache_data, f)
         
         print("Successfully fetched latest GPU performance data")
-        return data
+        return gpu_data
         
     except Exception as e:
         print(f"Warning: Could not fetch online GPU data ({str(e)})")
